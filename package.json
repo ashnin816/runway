@@ -1,0 +1,20 @@
+{
+  "name": "runway",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "@supabase/ssr": "^0.6.0",
+    "chart.js": "^4.4.7",
+    "xlsx-js-style": "^1.2.0",
+    "jspdf": "^2.5.2"
+  }
+}
