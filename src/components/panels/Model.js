@@ -4,6 +4,8 @@ import { useModel } from '@/context/ModelContext';
 import { fmtDollar, parseRaw, fmtSalary } from '@/lib/formatters';
 import { sumEmpAnnual, sumContractorAnnual, sumNewHireAnnual, getCutTotal } from '@/lib/calculations';
 import { getMonthOptions } from '@/lib/monthKeys';
+import { useUI } from '@/context/UIContext';
+import { useConfirm } from '@/components/shared/useConfirm';
 
 function SalaryInput({ value, onChange, placeholder = 'e.g. 120,000.00', style }) {
   const inputRef = useRef(null);
@@ -44,23 +46,24 @@ function SalaryInput({ value, onChange, placeholder = 'e.g. 120,000.00', style }
 /* Badge styles */
 const badgeBase = {
   fontFamily: "'JetBrains Mono', monospace",
-  fontSize: 9,
+  fontSize: 10,
   fontWeight: 600,
-  letterSpacing: '.04em',
+  letterSpacing: '.05em',
   textTransform: 'uppercase',
-  padding: '2px 7px',
+  padding: '3px 9px',
   borderRadius: 100,
   whiteSpace: 'nowrap',
 };
 const badges = {
-  employee: { ...badgeBase, background: 'rgba(59,130,246,.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,.2)' },
-  contractor: { ...badgeBase, background: 'rgba(139,92,246,.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,.2)' },
-  hire: { ...badgeBase, background: 'rgba(34,197,94,.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,.2)' },
+  employee: { ...badgeBase, background: 'rgba(59,130,246,.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,.25)' },
+  contractor: { ...badgeBase, background: 'rgba(139,92,246,.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,.25)' },
+  hire: { ...badgeBase, background: 'rgba(34,197,94,.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,.25)' },
 };
 
 export default function Model() {
   const { state, dispatch } = useModel();
-  const [activeTab, setActiveTab] = useState('team');
+  const { modelTab: activeTab, setModelTab: setActiveTab } = useUI();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const { empRows, contractorRows, revenueClientRows, newHireRows } = state;
   const monthOptions = useMemo(() => getMonthOptions(), []);
@@ -71,14 +74,13 @@ export default function Model() {
   const hireAnnual = useMemo(() => sumNewHireAnnual(newHireRows), [newHireRows]);
   const cutAnnual = useMemo(() => getCutTotal(empRows, contractorRows), [empRows, contractorRows]);
   const totalAnnualPayroll = empAnnual + ctAnnual;
-  const other = parseRaw(state.otherCosts);
   const revenue = useMemo(
     () => revenueClientRows.reduce((s, r) => s + (parseRaw(r.amount) || 0), 0),
     [revenueClientRows],
   );
-  const monthlyBurn = totalAnnualPayroll / 12 + other - revenue;
+  const monthlyBurn = totalAnnualPayroll / 12 - revenue;
   const scenarioAnnual = totalAnnualPayroll - cutAnnual + hireAnnual;
-  const scenarioBurn = scenarioAnnual / 12 + other - revenue;
+  const scenarioBurn = scenarioAnnual / 12 - revenue;
   const hasFutureChanges = newHireRows.length > 0 || cutAnnual > 0;
 
   // --- Build unified team list ---
@@ -118,7 +120,7 @@ export default function Model() {
 
   const activeTeam = teamList.filter(t => !t.isCut);
   const endingTeam = teamList.filter(t => t.isCut);
-  const totalMonthly = activeTeam.reduce((s, t) => s + t.monthlyCost, 0) + other;
+  const totalMonthly = activeTeam.reduce((s, t) => s + t.monthlyCost, 0);
 
   // --- Actions ---
   const addEmployee = useCallback(() => {
@@ -139,13 +141,18 @@ export default function Model() {
     else if (item.storeType === 'hire') dispatch({ type: 'UPDATE_NEW_HIRE', index: item.storeIndex, payload });
   }, [dispatch]);
 
-  const removeTeamMember = useCallback((item) => {
+  const removeTeamMember = useCallback(async (item) => {
     const name = item.label?.trim() || item.kind;
-    if (!window.confirm(`Remove "${name}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Remove ${name}?`,
+      message: `This will permanently remove "${name}" from your team. This action cannot be undone.`,
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
     if (item.storeType === 'emp') dispatch({ type: 'REMOVE_EMPLOYEE', index: item.storeIndex });
     else if (item.storeType === 'ct') dispatch({ type: 'REMOVE_CONTRACTOR', index: item.storeIndex });
     else if (item.storeType === 'hire') dispatch({ type: 'REMOVE_NEW_HIRE', index: item.storeIndex });
-  }, [dispatch]);
+  }, [dispatch, confirm]);
 
   // --- Revenue actions ---
   const addClient = useCallback(() => {
@@ -154,11 +161,16 @@ export default function Model() {
   const updateClient = useCallback((index, payload) => {
     dispatch({ type: 'UPDATE_REVENUE_CLIENT', index, payload });
   }, [dispatch]);
-  const removeClient = useCallback((index) => {
+  const removeClient = useCallback(async (index) => {
     const name = revenueClientRows[index]?.label?.trim() || 'this client';
-    if (!window.confirm(`Remove "${name}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Remove ${name}?`,
+      message: `This will permanently remove "${name}" from your revenue pipeline. This action cannot be undone.`,
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
     dispatch({ type: 'REMOVE_REVENUE_CLIENT', index });
-  }, [dispatch, revenueClientRows]);
+  }, [dispatch, revenueClientRows, confirm]);
 
   // Grid column template for team rows
   const teamGridCols = 'minmax(100px, 1.5fr) 70px 120px 100px 110px 30px';
@@ -170,6 +182,7 @@ export default function Model() {
     return (
       <div
         key={`${item.storeType}-${item.storeIndex}`}
+        className="team-row"
         style={{
           display: 'grid',
           gridTemplateColumns: teamGridCols,
@@ -267,6 +280,7 @@ export default function Model() {
 
   return (
     <div id="model" className="panel active">
+      {ConfirmDialog}
       {/* Summary bar */}
       <div className="grand-total-box burn-sticky-summary">
         <div>
@@ -276,10 +290,6 @@ export default function Model() {
         <div>
           <div className="label">Monthly Payroll</div>
           <div className="val">{fmtDollar(totalAnnualPayroll / 12)}</div>
-        </div>
-        <div>
-          <div className="label">Monthly Overhead</div>
-          <div className="val">{fmtDollar(other)}</div>
         </div>
         <div>
           <div className="label">Monthly Revenue</div>
@@ -292,29 +302,51 @@ export default function Model() {
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'var(--surface2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
-        {['Team', 'Financials'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab.toLowerCase())}
-            style={{
-              flex: 1, padding: '8px 16px', borderRadius: 6, border: 'none',
-              background: activeTab === tab.toLowerCase() ? 'var(--surface)' : 'transparent',
-              color: activeTab === tab.toLowerCase() ? 'var(--text)' : 'var(--muted)',
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: activeTab === tab.toLowerCase() ? 600 : 400,
-              letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer',
-              boxShadow: activeTab === tab.toLowerCase() ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
-              transition: 'all .15s',
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+      <div style={{
+        display: 'flex', gap: 4, marginBottom: 24,
+        background: 'var(--surface2)', borderRadius: 10, padding: 4,
+        border: '1px solid var(--border)',
+        position: 'sticky', top: 52, zIndex: 19,
+        boxShadow: '0 6px 12px -4px rgba(0,0,0,.08), 0 0 0 16px var(--bg)',
+      }}>
+        {[
+          {
+            key: 'team', label: 'Team',
+            icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+          },
+          {
+            key: 'financials', label: 'Financials',
+            icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+          },
+        ].map(tab => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                flex: 1, padding: '12px 20px', borderRadius: 8, border: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                background: isActive ? 'var(--surface)' : 'transparent',
+                color: isActive ? 'var(--text)' : 'var(--muted)',
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 14,
+                fontWeight: isActive ? 600 : 400,
+                cursor: 'pointer',
+                boxShadow: isActive ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
+                transition: 'all .2s',
+              }}
+            >
+              <span style={{ opacity: isActive ? 1 : 0.5, transition: 'opacity .2s', display: 'flex' }}>{tab.icon}</span>
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ========== TEAM TAB ========== */}
       {activeTab === 'team' && (
-        <>
+        <div className="tab-content-enter" key="team-tab">
           <div className="card">
             <div className="card-title">Your <em>team</em></div>
 
@@ -367,6 +399,7 @@ export default function Model() {
           {hasFutureChanges && (
             <div style={{
               background: 'var(--surface2)', border: '1px solid rgba(180,120,0,.2)', borderRadius: 8,
+              borderLeft: '3px solid var(--accent)',
               padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12,
             }}>
               <div>
@@ -384,25 +417,12 @@ export default function Model() {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ========== FINANCIALS TAB ========== */}
       {activeTab === 'financials' && (
-        <>
-        {/* Monthly Overhead */}
-        <div className="card">
-          <div className="card-title">Monthly <em>overhead</em></div>
-          <div className="card-mono">Rent, software, insurance, and other recurring non-payroll costs</div>
-          <div style={{ marginTop: 10, maxWidth: 300 }}>
-            <SalaryInput
-              value={other}
-              onChange={(val) => dispatch({ type: 'SET_FIELD', field: 'otherCosts', value: val })}
-              placeholder="e.g. 20,000"
-            />
-          </div>
-        </div>
-
+        <div className="tab-content-enter" key="fin-tab">
         {/* Revenue Pipeline */}
         <div className="card">
           <div className="card-title">Revenue <em>pipeline</em></div>
@@ -457,7 +477,7 @@ export default function Model() {
             />
           </div>
         </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { useModel } from '@/context/ModelContext';
 import { fmtDollar, fmtGridNum, parseGridNum, parseRaw } from '@/lib/formatters';
 import { getMonthKeys, getMonthMode, getCurrentMonthKey, MNAMES } from '@/lib/monthKeys';
 import { getEffectiveExpTotal, getEffectiveRevenue, computeClose, getEstimateValues } from '@/lib/calculations';
+import { useConfirm } from '@/components/shared/useConfirm';
 
 /* ────────────────────────────────────────────────────────────────────────────
    Constants
@@ -31,7 +32,12 @@ function ensureDefaults(actuals, months, actualsCutoffKey) {
         expenses: [
           { name: 'Salaries', amount: '', fixed: true },
           { name: 'Benefits', amount: '', fixed: true },
-          { name: '', amount: '' },
+          { name: 'Rent', amount: '' },
+          { name: 'Software', amount: '' },
+          { name: 'Legal & Accounting', amount: '' },
+          { name: 'Marketing', amount: '' },
+          { name: 'Insurance', amount: '' },
+          { name: 'Other', amount: '' },
         ],
         revenue: '',
         notes: '',
@@ -135,6 +141,7 @@ const ExpenseRowGroup = React.memo(function ExpenseRowGroup({
   label,
   isFixed,
   isTrailingEmpty,
+  isFirstOtherExpense,
   months,
   actualsCutoffKey,
   actualsWithCarry,
@@ -150,6 +157,27 @@ const ExpenseRowGroup = React.memo(function ExpenseRowGroup({
 }) {
   return (
     <>
+      {/* Other Expenses section header — before the first non-fixed row */}
+      {isFirstOtherExpense && (
+        <div className="ag-row ag-section-head" style={{ display: 'contents' }}>
+          <div
+            className="ag-cell ag-row-label"
+            style={{
+              position: 'sticky', left: 0, zIndex: 1,
+              fontWeight: 600, fontSize: 11,
+              color: 'var(--text)',
+              background: 'var(--surface2)',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '.04em',
+            }}
+          >
+            Other Expenses
+          </div>
+          {months.map(({ key }) => (
+            <div key={key} className="ag-cell" style={{ background: 'var(--surface2)', minHeight: 30 }} />
+          ))}
+        </div>
+      )}
       <div className="ag-row ag-exp-row" style={{ display: 'contents' }}>
         {isFixed ? (
           <div
@@ -161,13 +189,13 @@ const ExpenseRowGroup = React.memo(function ExpenseRowGroup({
         ) : (
           <div
             className="ag-cell ag-row-label editable-label"
-            style={{ position: 'sticky', left: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 4, opacity: isTrailingEmpty ? 0.5 : 1 }}
+            style={{ position: 'sticky', left: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 20, opacity: isTrailingEmpty ? 0.5 : 1 }}
           >
             <input
               type="text"
               value={label}
-              placeholder={isTrailingEmpty ? '+ New expense...' : 'Expense label'}
-              style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 12, padding: '2px 0', outline: 'none', fontStyle: isTrailingEmpty ? 'italic' : 'normal' }}
+              placeholder={isTrailingEmpty ? '+ Add category' : 'Expense name'}
+              style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 11, padding: '2px 0', outline: 'none', fontStyle: isTrailingEmpty ? 'italic' : 'normal', color: 'var(--muted)' }}
               onChange={(e) => onRenameExpense(ei, e.target.value)}
             />
             {!isTrailingEmpty && (
@@ -187,35 +215,37 @@ const ExpenseRowGroup = React.memo(function ExpenseRowGroup({
           const exp = (actualsWithCarry[key]?.expenses || [])[ei];
           const raw = exp?.amount ?? '';
           const bk = bankruptKeys.has(key) ? ' ag-bankrupt' : '';
-          let placeholder = '\u2014';
-          let cellTitle = undefined;
-          if (isEst && raw === '') {
+          if (isEst) {
+            // Read-only estimate cell
             const ev = getEstimateValues(key, state);
+            let estVal = 0;
+            let cellTitle = undefined;
             if (ei === 0) {
-              placeholder = fmtGridNum(ev.salaries);
+              estVal = ev.salaries;
               const { empRows = [], contractorRows = [], newHireRows = [] } = state;
               const activeEmp = empRows.filter(r => !r.isCut).length;
               const activeCt = contractorRows.filter(r => !r.isCut).length;
               const hires = newHireRows.length;
               cellTitle = `From Model: ${activeEmp} employees + ${activeCt} contractors` + (hires > 0 ? ` + ${hires} planned hires` : '') + ` = ${fmtGridNum(ev.salaries)}/mo`;
             } else if (ei === SALARY_ROW_COUNT) {
-              placeholder = fmtGridNum(ev.other);
+              estVal = ev.other;
               cellTitle = `From Model > Costs: monthly overhead = ${fmtGridNum(ev.other)}/mo`;
             }
+            return (
+              <div key={key} className={`ag-cell ag-estimate ag-computed${bk}`} title={cellTitle}>
+                {estVal > 0 ? fmtDollar(estVal) : '\u2014'}
+              </div>
+            );
           }
-          const cellCls = isEst ? 'ag-estimate' : '';
           return (
-            <div key={key} className={`ag-cell ${cellCls}${bk}`}>
+            <div key={key} className={`ag-cell${bk}`}>
               <GridCell
                 value={raw}
                 onChange={(val) => onExpenseChange(key, ei, val)}
-                placeholder={placeholder}
-                className={isEst ? 'ag-estimate-input' : ''}
                 dataAgrow={`exp-${ei}`}
                 dataAgcol={mi}
                 onPaste={onPaste}
                 onKeyDown={onKeyDown}
-                title={cellTitle}
               />
             </div>
           );
@@ -250,50 +280,43 @@ const ExpenseRowGroup = React.memo(function ExpenseRowGroup({
 export default function Actuals() {
   const { state, dispatch } = useModel();
   const { actuals } = state;
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [clearConfirm, setClearConfirm] = useState(false);
-  const [cutoffOverride, setCutoffOverride] = useState(null);
   const gridWrapRef = useRef(null);
 
   /* ── Auto-range: derive grid start/end from data ──────────────────── */
-  const { autoStart, autoEnd, autoCutoff } = useMemo(() => {
+  const { autoStart, autoEnd, actualsCutoffKey } = useMemo(() => {
     const now = new Date();
     const curYear = now.getFullYear();
     const curMonth = now.getMonth() + 1;
     const curKey = `${curYear}-${String(curMonth).padStart(2, '0')}`;
 
-    // Previous month = default cutoff
-    const prevDate = new Date(curYear, curMonth - 2, 1);
-    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    // Cutoff = current month (past + present = editable, future = estimates)
+    const cutoff = curKey;
 
     // Find earliest and latest months with data
     const dataKeys = Object.keys(actuals).filter(k => monthHasData(actuals[k])).sort();
 
     let start, end;
     if (dataKeys.length > 0) {
-      // Start: 3 months before earliest data, but no later than 3 months before today
       const earliestData = dataKeys[0];
       const threeBeforeNow = new Date(curYear, curMonth - 4, 1);
       const threeBeforeKey = `${threeBeforeNow.getFullYear()}-${String(threeBeforeNow.getMonth() + 1).padStart(2, '0')}`;
       start = earliestData < threeBeforeKey ? earliestData : threeBeforeKey;
 
-      // End: 18 months after latest data, or 18 months from now, whichever is later
       const latestData = dataKeys[dataKeys.length - 1];
       const eighteenFromData = addMonths(latestData, 18);
       const eighteenFromNow = addMonths(curKey, 18);
       end = eighteenFromData > eighteenFromNow ? eighteenFromData : eighteenFromNow;
     } else {
-      // No data: 3 months before now → 18 months after now
       const threeBeforeNow = new Date(curYear, curMonth - 4, 1);
       start = `${threeBeforeNow.getFullYear()}-${String(threeBeforeNow.getMonth() + 1).padStart(2, '0')}`;
       end = addMonths(curKey, 18);
     }
 
-    return { autoStart: start, autoEnd: end, autoCutoff: prevKey };
+    return { autoStart: start, autoEnd: end, actualsCutoffKey: cutoff };
   }, [actuals]);
-
-  const actualsCutoffKey = cutoffOverride || autoCutoff;
 
   // Sync cutoff to global state so Dashboard/calculations use the same value
   useEffect(() => {
@@ -394,7 +417,20 @@ export default function Actuals() {
       const netBurn = expTotal - rev;
       const close = computeClose(key, actualsWithCarry, state);
 
-      result[key] = { salaryTotal, expTotal, rev, netBurn, close };
+      // Variance: actual vs what the model estimated for this month
+      // Only meaningful for actuals months that have real data
+      const ev = getEstimateValues(key, state);
+      const hasActualExp = !isEst && exps.some(e => e.amount !== '' && e.amount !== undefined && parseGridNum(e.amount) !== 0);
+      const hasActualRev = !isEst && actualsWithCarry[key]?.revenue !== '' && actualsWithCarry[key]?.revenue !== undefined;
+      const estExpTotal = ev.salaries + ev.other;
+      const estRev = ev.revenue;
+      const expVariance = hasActualExp ? expTotal - estExpTotal : null;    // positive = over budget
+      const revVariance = hasActualRev ? rev - estRev : null;             // positive = beat estimate
+      const closeVariance = (expVariance !== null || revVariance !== null)
+        ? (close || 0) - ((actualsWithCarry[key]?.openingBalance ? parseGridNum(actualsWithCarry[key].openingBalance) : 0) - (estExpTotal - estRev))
+        : null;
+
+      result[key] = { salaryTotal, expTotal, rev, netBurn, close, expVariance, revVariance, estExpTotal, estRev };
     });
     return result;
   }, [months, actualsWithCarry, actualsCutoffKey, state]);
@@ -425,33 +461,6 @@ export default function Actuals() {
     return { label: null, key: null, monthsRemaining: null, idx: null }; // solvent through grid
   }, [months, computedValues]);
 
-  /* ── Estimate breakdown — what feeds the EST columns ──────────────── */
-  const estimateBreakdown = useMemo(() => {
-    const { empRows = [], contractorRows = [], newHireRows = [], revenueClientRows = [] } = state;
-    const empCount = empRows.filter(r => !r.isCut).length;
-    const ctCount = contractorRows.filter(r => !r.isCut).length;
-    const hireCount = newHireRows.length;
-    const cutCount = empRows.filter(r => r.isCut).length + contractorRows.filter(r => r.isCut).length;
-    const clientCount = revenueClientRows.filter(r => (r.amount || 0) > 0).length;
-
-    // Use a representative estimate month (first estimate month)
-    const firstEstMonth = months.find(m => getMonthMode(m.key, actualsCutoffKey) === 'estimate');
-    if (!firstEstMonth) return null;
-
-    const ev = getEstimateValues(firstEstMonth.key, state);
-
-    return {
-      salaries: ev.salaries,
-      overhead: ev.other,
-      revenue: ev.revenue,
-      netBurn: ev.salaries + ev.other - ev.revenue,
-      empCount,
-      ctCount,
-      hireCount,
-      cutCount,
-      clientCount,
-    };
-  }, [state, months, actualsCutoffKey]);
 
   /* ── Current month key ──────────────────────────────────────────────── */
   const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
@@ -490,18 +499,6 @@ export default function Actuals() {
      Handlers
      ════════════════════════════════════════════════════════════════════════ */
 
-  /* ── Click month header to override cutoff ─────────────────────────── */
-  const handleCutoffClick = useCallback(
-    (monthKey) => {
-      if (cutoffOverride === monthKey) {
-        // Clicking the current override clears it (back to auto)
-        setCutoffOverride(null);
-      } else {
-        setCutoffOverride(monthKey);
-      }
-    },
-    [cutoffOverride],
-  );
 
   /* ── Cell-level value changes ───────────────────────────────────────── */
   const handleOpeningBalanceChange = useCallback(
@@ -513,25 +510,27 @@ export default function Actuals() {
 
   const handleExpenseChange = useCallback(
     (key, expIndex, val) => {
-      dispatch({ type: 'SET_ACTUALS_EXPENSE', monthKey: key, expIndex, value: val });
-      // Auto-expand: if the user typed into the last custom expense row,
-      // ensure a new empty row exists below it across all months
-      if (val !== '' && expIndex >= SALARY_ROW_COUNT) {
-        const maxExpLen = Math.max(
-          ...months.map(({ key: mk }) => (actuals[mk]?.expenses || []).length),
-        );
-        if (expIndex >= maxExpLen - 1) {
-          const newActuals = { ...actuals };
-          months.forEach(({ key: mk }) => {
-            if (!newActuals[mk]) {
-              newActuals[mk] = { openingBalance: '', expenses: [], revenue: '', notes: '' };
-            }
-            const exps = [...(newActuals[mk].expenses || [])];
-            while (exps.length <= expIndex + 1) exps.push({ name: '', amount: '' });
-            newActuals[mk] = { ...newActuals[mk], expenses: exps };
-          });
-          dispatch({ type: 'SET_ACTUALS', payload: newActuals });
-        }
+      // Check if auto-expand is needed BEFORE dispatching
+      const needsExpand = val !== '' && expIndex >= SALARY_ROW_COUNT && expIndex >= Math.max(
+        ...months.map(({ key: mk }) => (actuals[mk]?.expenses || []).length),
+      ) - 1;
+
+      if (needsExpand) {
+        // Combine the value change + row expansion into a single SET_ACTUALS dispatch
+        const newActuals = {};
+        months.forEach(({ key: mk }) => {
+          const existing = actuals[mk] || { openingBalance: '', expenses: [], revenue: '', notes: '' };
+          const exps = [...(existing.expenses || [])];
+          // Set the actual value on the target cell
+          while (exps.length <= expIndex) exps.push({ name: '', amount: '' });
+          if (mk === key) exps[expIndex] = { ...exps[expIndex], amount: val };
+          // Add the trailing empty row
+          while (exps.length <= expIndex + 1) exps.push({ name: '', amount: '' });
+          newActuals[mk] = { ...existing, expenses: exps };
+        });
+        dispatch({ type: 'SET_ACTUALS', payload: { ...actuals, ...newActuals } });
+      } else {
+        dispatch({ type: 'SET_ACTUALS_EXPENSE', monthKey: key, expIndex, value: val });
       }
     },
     [dispatch, actuals, months],
@@ -564,10 +563,15 @@ export default function Actuals() {
 
   /* ── Delete expense row ─────────────────────────────────────────────── */
   const handleDeleteExpense = useCallback(
-    (idx) => {
+    async (idx) => {
       if (idx < SALARY_ROW_COUNT) return;
       const name = expenseLabels[idx] || 'this expense row';
-      if (!window.confirm(`Are you sure you want to delete the "${name}" row across all months?`)) return;
+      const ok = await confirm({
+        title: `Delete "${name}"?`,
+        message: `This will remove the "${name}" expense category and all its data across every month. This cannot be undone.`,
+        confirmLabel: 'Delete category',
+      });
+      if (!ok) return;
       const newActuals = { ...actuals };
       months.forEach(({ key }) => {
         if (newActuals[key]?.expenses) {
@@ -578,19 +582,19 @@ export default function Actuals() {
       });
       dispatch({ type: 'SET_ACTUALS', payload: newActuals });
     },
-    [actuals, months, dispatch, expenseLabels],
+    [actuals, months, dispatch, expenseLabels, confirm],
   );
 
   /* ── Clear all data ─────────────────────────────────────────────────── */
-  const handleClearAll = useCallback(() => {
-    if (!clearConfirm) {
-      setClearConfirm(true);
-      setTimeout(() => setClearConfirm(false), 3000);
-      return;
-    }
+  const handleClearAll = useCallback(async () => {
+    const ok = await confirm({
+      title: 'Clear all actuals data?',
+      message: 'This will permanently erase all opening balances, expenses, and revenue across every month. This cannot be undone.',
+      confirmLabel: 'Clear everything',
+    });
+    if (!ok) return;
     dispatch({ type: 'SET_ACTUALS', payload: {} });
-    setClearConfirm(false);
-  }, [clearConfirm, dispatch]);
+  }, [dispatch, confirm]);
 
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen((prev) => !prev);
@@ -734,10 +738,8 @@ export default function Actuals() {
      ════════════════════════════════════════════════════════════════════════ */
   return (
     <div id="actuals" className="panel active">
+      {ConfirmDialog}
       {/* ── Paste flash CSS ─────────────────────────────────────────────── */}
-      <style>{`.paste-flash { animation: pasteFlash 0.6s ease; }
-.ag-current-month { border-bottom: 2px solid var(--blue, #2563eb) !important; }
-.ag-head .ag-cell[style*="cursor: pointer"]:hover { opacity: 0.8; }`}</style>
 
       {/* ── Header card ─────────────────────────────────────────────────── */}
       <div
@@ -757,26 +759,9 @@ export default function Actuals() {
             <div className="card-title" style={{ marginBottom: 6 }}>
               Monthly <em>actuals tracker</em>
             </div>
-            <p style={{ margin: 0, fontSize: 13 }}>
-              Enter values directly in the grid. Past months show actuals, future months show estimates from your model.
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>
+              Enter your real numbers for past and current months. Future months show estimates from your model.
             </p>
-            {cutoffOverride && (
-              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '.06em' }}>
-                  Actuals through: <strong style={{ color: 'var(--text)' }}>{months.find(m => m.key === cutoffOverride)?.label || cutoffOverride}</strong>
-                </span>
-                <button
-                  onClick={() => setCutoffOverride(null)}
-                  style={{
-                    background: 'none', border: '1px solid var(--border)', borderRadius: 4,
-                    cursor: 'pointer', fontSize: 10, color: 'var(--muted)', padding: '2px 8px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                >
-                  Reset to auto
-                </button>
-              </div>
-            )}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
@@ -788,7 +773,7 @@ export default function Actuals() {
                 background: 'rgba(220,38,38,.06)',
               }}
             >
-              {clearConfirm ? 'Click again to confirm' : '\u2715 Clear All Data'}
+{'\u2715 Clear All Data'}
             </button>
             <button className="btn-fullscreen" onClick={toggleFullscreen}>
               {isFullscreen ? '\u2715 Exit Full Screen' : '\u26F6 Full Screen'}
@@ -796,52 +781,6 @@ export default function Actuals() {
           </div>
         </div>
       </div>
-
-      {/* ── Estimate breakdown ──────────────────────────────────────────── */}
-      {estimateBreakdown && !isFullscreen && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '8px 16px',
-          marginBottom: 8,
-          borderRadius: 8,
-          background: 'rgba(180,120,0,.04)',
-          border: '1px solid rgba(180,120,0,.12)',
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 11,
-          color: 'var(--muted)',
-          flexWrap: 'wrap',
-        }}>
-          <span style={{ color: 'var(--accent)', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', fontSize: 9, marginRight: 4 }}>EST</span>
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{fmtDollar(estimateBreakdown.salaries)}</strong>
-            <span style={{ fontSize: 10 }}> salaries</span>
-            <span style={{ color: 'var(--border)', margin: '0 2px' }}>(</span>
-            <span style={{ fontSize: 10 }}>{estimateBreakdown.empCount} emp</span>
-            {estimateBreakdown.ctCount > 0 && <span style={{ fontSize: 10 }}> + {estimateBreakdown.ctCount} ctr</span>}
-            {estimateBreakdown.hireCount > 0 && <span style={{ fontSize: 10, color: 'var(--green)' }}> + {estimateBreakdown.hireCount} hire</span>}
-            {estimateBreakdown.cutCount > 0 && <span style={{ fontSize: 10, color: 'var(--red)' }}> − {estimateBreakdown.cutCount} cut</span>}
-            <span style={{ color: 'var(--border)' }}>)</span>
-          </span>
-          <span style={{ color: 'var(--border)' }}>+</span>
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{fmtDollar(estimateBreakdown.overhead)}</strong>
-            <span style={{ fontSize: 10 }}> overhead</span>
-          </span>
-          <span style={{ color: 'var(--border)' }}>−</span>
-          <span>
-            <strong style={{ color: 'var(--green)' }}>{fmtDollar(estimateBreakdown.revenue)}</strong>
-            <span style={{ fontSize: 10 }}> revenue</span>
-            {estimateBreakdown.clientCount > 0 && <span style={{ fontSize: 10 }}> ({estimateBreakdown.clientCount} client{estimateBreakdown.clientCount !== 1 ? 's' : ''})</span>}
-          </span>
-          <span style={{ color: 'var(--border)' }}>=</span>
-          <span>
-            <strong style={{ color: estimateBreakdown.netBurn > 0 ? 'var(--red)' : 'var(--green)' }}>{fmtDollar(estimateBreakdown.netBurn)}</strong>
-            <span style={{ fontSize: 10 }}>/mo net burn</span>
-          </span>
-        </div>
-      )}
 
       {/* ── Cash-out callout ────────────────────────────────────────────── */}
       {cashOutInfo && !isFullscreen && (() => {
@@ -970,7 +909,6 @@ export default function Actuals() {
                 const isEst = getMonthMode(key, actualsCutoffKey) === 'estimate';
                 const bk = bankruptKeys.has(key) ? ' ag-bankrupt' : '';
                 const isCurrent = key === currentMonthKey ? ' ag-current-month' : '';
-                // Show a divider on the first estimate column
                 const isFirstEst = isEst && mi > 0 && getMonthMode(months[mi - 1].key, actualsCutoffKey) === 'actuals';
                 return (
                   <div
@@ -982,14 +920,19 @@ export default function Actuals() {
                       padding: '6px 6px',
                       justifyContent: 'center',
                       alignItems: 'center',
-                      cursor: 'pointer',
-                      borderLeft: isFirstEst ? '2px solid var(--accent)' : undefined,
+                      borderLeft: isFirstEst ? '3px solid var(--accent)' : undefined,
                     }}
-                    onClick={() => handleCutoffClick(key)}
-                    title={isEst ? `Click to mark actuals through ${label}` : `Click to set estimate from ${label}`}
                   >
                     <span style={{ fontSize: 9, letterSpacing: '.07em' }}>{label}</span>
-                    {isEst && <span className="ag-est-badge">EST</span>}
+                    {isEst ? (
+                      <span className="ag-est-badge">EST</span>
+                    ) : isCurrent ? (
+                      <span style={{
+                        fontSize: 7, fontWeight: 700, letterSpacing: '.1em',
+                        color: 'var(--blue)', textTransform: 'uppercase',
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}>NOW</span>
+                    ) : null}
                   </div>
                 );
               })}
@@ -1067,19 +1010,11 @@ export default function Actuals() {
                     ? `From Model > Revenue: ${clientCount} client${clientCount !== 1 ? 's' : ''} = ${fmtGridNum(estRev)}/mo`
                     : undefined;
                   return (
-                    <div key={key} className={`ag-cell ag-estimate${bk}`}>
-                      <GridCell
-                        value={raw !== '' ? raw : ''}
-                        onChange={(val) => handleRevenueChange(key, val)}
-                        placeholder={estRev > 0 ? fmtGridNum(estRev) : '\u2014'}
-                        className="ag-estimate-input"
-                        style={{ color: 'var(--green)' }}
-                        dataAgrow="revenue"
-                        dataAgcol={mi}
-                        onPaste={handlePaste}
-                        onKeyDown={handleKeyDown}
-                        title={revTitle}
-                      />
+                    <div key={key} className={`ag-cell ag-estimate ag-computed${bk}`}
+                      title={revTitle}
+                      style={{ color: 'var(--green)' }}
+                    >
+                      {estRev > 0 ? fmtDollar(estRev) : '\u2014'}
                     </div>
                   );
                 }
@@ -1095,6 +1030,44 @@ export default function Actuals() {
                       onPaste={handlePaste}
                       onKeyDown={handleKeyDown}
                     />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Revenue Variance ───────────────────────────────────── */}
+            <div className="ag-row" style={{ display: 'contents' }}>
+              <div
+                className="ag-cell ag-row-label"
+                style={{
+                  position: 'sticky', left: 0, zIndex: 1,
+                  fontSize: 10, fontStyle: 'italic', color: 'var(--muted)',
+                  paddingLeft: 20,
+                }}
+              >
+                vs. estimate
+              </div>
+              {months.map(({ key }) => {
+                const v = computedValues[key]?.revVariance;
+                if (v === null || v === undefined) {
+                  return <div key={key} className="ag-cell" style={{ minHeight: 28 }} />;
+                }
+                const beat = v > 0;
+                const pct = computedValues[key]?.estRev
+                  ? Math.round(Math.abs(v) / computedValues[key].estRev * 100)
+                  : 0;
+                return (
+                  <div key={key} className="ag-cell" style={{
+                    minHeight: 28,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 10,
+                    textAlign: 'right',
+                    padding: '4px 10px',
+                    justifyContent: 'flex-end',
+                    color: beat ? 'var(--green)' : 'var(--red)',
+                  }}>
+                    {beat ? '+' : '\u2212'}{fmtDollar(Math.abs(v))}
+                    {pct > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>({pct}%)</span>}
                   </div>
                 );
               })}
@@ -1127,6 +1100,7 @@ export default function Actuals() {
             {expenseLabels.map((lbl, ei) => {
               const isFixed = ei < SALARY_ROW_COUNT;
               const isTrailingEmpty = !isFixed && ei === expenseLabels.length - 1 && lbl.trim() === '';
+              const isFirstOtherExpense = ei === SALARY_ROW_COUNT;
               return (
                 <ExpenseRowGroup
                   key={ei}
@@ -1134,6 +1108,7 @@ export default function Actuals() {
                   label={lbl}
                   isFixed={isFixed}
                   isTrailingEmpty={isTrailingEmpty}
+                  isFirstOtherExpense={isFirstOtherExpense}
                   months={months}
                   actualsCutoffKey={actualsCutoffKey}
                   actualsWithCarry={actualsWithCarry}
@@ -1172,6 +1147,44 @@ export default function Actuals() {
                 return (
                   <div key={key} className={`ag-cell ag-computed ${cls}${bk}`}>
                     {total > 0 ? fmtDollar(total) : '\u2014'}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Expense Variance ──────────────────────────────────────── */}
+            <div className="ag-row" style={{ display: 'contents' }}>
+              <div
+                className="ag-cell ag-row-label"
+                style={{
+                  position: 'sticky', left: 0, zIndex: 1,
+                  fontSize: 10, fontStyle: 'italic', color: 'var(--muted)',
+                  paddingLeft: 20,
+                }}
+              >
+                vs. estimate
+              </div>
+              {months.map(({ key }) => {
+                const v = computedValues[key]?.expVariance;
+                if (v === null || v === undefined) {
+                  return <div key={key} className="ag-cell" style={{ minHeight: 28 }} />;
+                }
+                const over = v > 0;
+                const pct = computedValues[key]?.estExpTotal
+                  ? Math.round(Math.abs(v) / computedValues[key].estExpTotal * 100)
+                  : 0;
+                return (
+                  <div key={key} className="ag-cell" style={{
+                    minHeight: 28,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 10,
+                    textAlign: 'right',
+                    padding: '4px 10px',
+                    justifyContent: 'flex-end',
+                    color: over ? 'var(--red)' : 'var(--green)',
+                  }}>
+                    {over ? '+' : '\u2212'}{fmtDollar(Math.abs(v))}
+                    {pct > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>({pct}%)</span>}
                   </div>
                 );
               })}

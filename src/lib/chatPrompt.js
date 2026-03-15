@@ -47,7 +47,6 @@ GUIDELINES:
 export function getChatModelContext(state) {
   const { empRows = [], contractorRows = [], newHireRows = [], revenueClientRows = [] } = state;
   const bankBalance = parseFloat(state.bankBalance) || 0;
-  const otherCosts = parseFloat(state.otherCosts) || 0;
   const estimatedRevenue = parseFloat(state.estimatedRevenue) || 0;
   const bPct = state.masterBenefitsPct || 22;
   const committedCapital = parseFloat(state.committedCapital) || 0;
@@ -57,7 +56,7 @@ export function getChatModelContext(state) {
   const hireAnnual = newHireRows.reduce((s, r) => s + (r.base || 0) * (1 + (r.bPct || 0)/100), 0);
   const cutTotal = empRows.filter(r => r.isCut).reduce((s, r) => s + (r.base || 0) * (1 + (r.bPct || 0)/100), 0)
     + contractorRows.filter(r => r.isCut).reduce((s, r) => s + (r.amount || 0), 0);
-  const burnA = (empAnnual + ctAnnual) / 12 + otherCosts - estimatedRevenue;
+  const burnA = (empAnnual + ctAnnual) / 12 - estimatedRevenue;
 
   const pipeline = revenueClientRows.filter(c => c.amount > 0);
   const pipelineTotal = pipeline.reduce((s, c) => s + (c.amount || 0), 0);
@@ -77,7 +76,7 @@ export function getChatModelContext(state) {
 
   return `Cash Position: $${Math.round(bankBalance).toLocaleString()}
 Monthly Burn (no change): $${Math.round(burnA).toLocaleString()}
-Monthly Overhead: $${Math.round(otherCosts).toLocaleString()}
+Monthly Payroll: $${Math.round((empAnnual + ctAnnual) / 12).toLocaleString()}
 Monthly Revenue (estimate): $${Math.round(estimatedRevenue).toLocaleString()}
 Benefits Rate: ${bPct}%
 

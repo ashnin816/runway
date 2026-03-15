@@ -40,21 +40,20 @@ export function computeClose(key, actuals, state) {
 }
 
 export function getEstimateValues(key, state) {
-  const { empRows, contractorRows, newHireRows, otherCosts, estimatedRevenue, revenueClientRows } = state;
+  const { empRows, contractorRows, newHireRows, estimatedRevenue, revenueClientRows } = state;
   const empAnnual = sumEmpAnnual(empRows);
   const ctAnnual = sumContractorAnnual(contractorRows);
   const redAnnual = getCutTotalForMonth(key, empRows, contractorRows);
   const hireAnnual = getHireTotalForMonth(key, newHireRows);
-  const other = parseRaw(otherCosts);
   // Use client pipeline revenue for the given month, fall back to estimatedRevenue
   const clientRev = getClientRevenueForMonth(key, revenueClientRows);
   const revenue = clientRev > 0 ? clientRev : parseRaw(estimatedRevenue);
   const scenarioMonthlyComp = (empAnnual + ctAnnual - redAnnual + hireAnnual) / 12;
   return {
-    expenses: scenarioMonthlyComp + other,
+    expenses: scenarioMonthlyComp,
     revenue: revenue,
     salaries: (empAnnual + ctAnnual - redAnnual + hireAnnual) / 12,
-    other: other,
+    other: 0,
   };
 }
 

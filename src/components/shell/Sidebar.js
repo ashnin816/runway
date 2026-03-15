@@ -68,6 +68,8 @@ export default function Sidebar() {
         </svg>
         <span>Collapse</span>
       </button>
+
+      <div className="sb-version">v1.0</div>
     </div>
   );
 }

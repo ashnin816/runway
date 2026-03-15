@@ -8,6 +8,7 @@ export function UIProvider({ children }) {
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [modelTab, setModelTab] = useState('team');
 
   useEffect(() => {
     try {
@@ -39,6 +40,7 @@ export function UIProvider({ children }) {
     darkMode, toggleDarkMode,
     sidebarCollapsed, toggleSidebar,
     chatOpen, setChatOpen,
+    modelTab, setModelTab,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

@@ -10,6 +10,7 @@ const styles = {
     height: '100vh',
     width: '100vw',
     background: 'linear-gradient(145deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%)',
+    backgroundImage: 'linear-gradient(145deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%), radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.04) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(59,130,246,0.03) 0%, transparent 50%)',
     position: 'fixed',
     inset: 0,
     zIndex: 9999,
@@ -90,8 +91,9 @@ const styles = {
     borderRadius: 10,
     cursor: 'pointer',
     marginTop: 12,
-    transition: 'opacity 0.2s, transform 0.1s',
+    transition: 'opacity 0.2s, transform 0.15s, box-shadow 0.2s',
     letterSpacing: '0.01em',
+    boxShadow: '0 2px 8px rgba(99,102,241,.2)',
   },
   helperText: {
     fontSize: 12,
@@ -241,6 +243,16 @@ export default function AuthOverlay() {
                   ...styles.button,
                   opacity: sending ? 0.7 : 1,
                   cursor: sending ? 'not-allowed' : 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  if (!sending) {
+                    e.target.style.transform = 'translateY(-1px)';
+                    e.target.style.boxShadow = '0 4px 16px rgba(99,102,241,.35)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 2px 8px rgba(99,102,241,.2)';
                 }}
               >
                 {sending ? 'Sending...' : 'Send Magic Link'}

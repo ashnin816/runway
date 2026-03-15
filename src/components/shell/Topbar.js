@@ -13,7 +13,7 @@ const iconBtnStyle = {
   borderRadius: 6,
   display: 'flex',
   alignItems: 'center',
-  transition: 'color .15s, background .15s',
+  transition: 'color .15s, background .15s, transform .15s',
 };
 
 function IconBtn({ title, onClick, children }) {
@@ -25,10 +25,12 @@ function IconBtn({ title, onClick, children }) {
       onMouseEnter={e => {
         e.currentTarget.style.color = 'var(--text)';
         e.currentTarget.style.background = 'var(--surface2)';
+        e.currentTarget.style.transform = 'translateY(-1px)';
       }}
       onMouseLeave={e => {
         e.currentTarget.style.color = 'var(--muted)';
         e.currentTarget.style.background = 'none';
+        e.currentTarget.style.transform = 'none';
       }}
     >
       {children}
@@ -74,14 +76,21 @@ const PeopleIcon = () => (
   </svg>
 );
 
+const panelNames = {
+  overview: 'Overview',
+  model: 'Model',
+  actuals: 'Actuals',
+  'team-access': 'Team Access',
+};
+
 export default function Topbar() {
   const { user, signOut } = useAuth();
-  const { darkMode, toggleDarkMode, setActivePanel } = useUI();
+  const { darkMode, toggleDarkMode, activePanel, setActivePanel } = useUI();
   const { state, saveStatus } = useModel();
 
   return (
     <div className="topbar">
-      <div className="topbar-title">Runway <em>Model</em></div>
+      <div className="topbar-title">Runway <em>&middot; {panelNames[activePanel] || 'Model'}</em></div>
       <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         {/* Dark mode toggle */}
         <IconBtn

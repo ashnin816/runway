@@ -68,10 +68,8 @@ export async function exportExcel(state) {
     const bankVal = parseFloat(state.bankBalance) || 0;
     asn(3, 1, bankVal, sInput);
 
-    // Row 4: Monthly Other Expenses Costs
-    asc(4, 0, 'Monthly Overhead', sLabelBold);
-    const otherVal = parseFloat(state.otherCosts) || 0;
-    asn(4, 1, otherVal, sInput);
+    // Row 4: (reserved — overhead removed)
+    asc(4, 0, '', sLabel);
 
     // Row 5: Estimated Monthly Revenue
     asc(5, 0, 'Monthly Revenue (Est.)', sLabelBold);

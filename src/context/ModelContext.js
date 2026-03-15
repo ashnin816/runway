@@ -6,7 +6,7 @@ const ModelContext = createContext(null);
 
 const initialState = {
   bankBalance: 0,
-  otherCosts: 20000,
+  otherCosts: 0,
   estimatedRevenue: 0,
   masterBenefitsPct: 22,
   gridStartKey: '2025-01',
