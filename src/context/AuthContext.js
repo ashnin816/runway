@@ -66,7 +66,14 @@ export function AuthProvider({ children }) {
 
   async function signOut() {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Sign out timeout')), 3000)),
+      ]);
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
     setUser(null);
     setIsPro(false);
     window.location.reload();
