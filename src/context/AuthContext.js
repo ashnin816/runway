@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
     const supabase = createClient();
 
     async function initAuth() {
+      const timer = setTimeout(() => setLoading(false), 3000);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -25,6 +26,7 @@ export function AuthProvider({ children }) {
       } catch (e) {
         console.warn('Auth init:', e.message);
       }
+      clearTimeout(timer);
       setLoading(false);
     }
 
