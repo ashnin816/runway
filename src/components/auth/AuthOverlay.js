@@ -212,7 +212,7 @@ export default function AuthOverlay() {
           <div style={styles.logoWrap}>
             <div style={styles.logoGlow} />
             <h1 style={styles.logo}>
-              Runway<span style={styles.logoDot}>.fyi</span>
+              Runway
             </h1>
           </div>
           <div style={styles.subtitle}>Financial Modeling for Startups</div>

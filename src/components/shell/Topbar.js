@@ -121,7 +121,7 @@ export default function Topbar() {
           <div className="auth-user-bar" style={{ display: 'flex', marginLeft: 8 }}>
             <span className="dot"></span>
             <span>{user.email}</span>
-            <button onClick={() => { if (confirm('Sign out?')) signOut(); }}>sign out</button>
+            <button onClick={() => signOut()}>sign out</button>
           </div>
         )}
 
