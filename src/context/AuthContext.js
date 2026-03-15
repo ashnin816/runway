@@ -64,21 +64,16 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function signOut() {
-    const supabase = createClient();
-    // Sign out locally first (no network call, always succeeds)
-    await supabase.auth.signOut({ scope: 'local' });
-    // Clear any remaining storage
+  function signOut() {
+    // Clear localStorage
     Object.keys(localStorage).filter(k => k.startsWith('sb-')).forEach(k => localStorage.removeItem(k));
-    // Clear auth cookies so middleware doesn't re-authenticate
+    // Clear cookies
     document.cookie.split(';').forEach(c => {
       const name = c.trim().split('=')[0];
       if (name.startsWith('sb-')) {
         document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
       }
     });
-    setUser(null);
-    setIsPro(false);
     window.location.reload();
   }
 
