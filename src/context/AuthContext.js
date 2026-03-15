@@ -17,17 +17,15 @@ export function AuthProvider({ children }) {
 
     async function initAuth() {
       try {
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000));
-        const { data: { session } } = await Promise.race([supabase.auth.getSession(), timeout]);
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser(session.user);
           await checkSubscription(session.user);
         }
       } catch (e) {
-        console.error('Auth init error:', e);
-      } finally {
-        setLoading(false);
+        console.warn('Auth init:', e.message);
       }
+      setLoading(false);
     }
 
     async function checkSubscription(authUser) {
