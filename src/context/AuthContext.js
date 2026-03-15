@@ -65,17 +65,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function signOut() {
-    const supabase = createClient();
-    try {
-      await Promise.race([
-        supabase.auth.signOut(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Sign out timeout')), 3000)),
-      ]);
-    } catch (e) {
-      console.error('Sign out error:', e);
-    }
+    // Clear all Supabase auth storage locally
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('sb-'));
+    keys.forEach(k => localStorage.removeItem(k));
     setUser(null);
     setIsPro(false);
+    setLoading(false);
+    // Try server-side sign out in background (don't await)
+    try { createClient().auth.signOut(); } catch {}
     window.location.reload();
   }
 
