@@ -17,7 +17,8 @@ export function AuthProvider({ children }) {
 
     async function initAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000));
+        const { data: { session } } = await Promise.race([supabase.auth.getSession(), timeout]);
         if (session?.user) {
           setUser(session.user);
           await checkSubscription(session.user);

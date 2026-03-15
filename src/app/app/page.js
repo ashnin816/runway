@@ -74,7 +74,7 @@ export default function AppPage() {
             color: '#f1f5f9',
             animation: 'loadingPulse 2s ease-in-out infinite',
           }}>
-            Runway<span style={{ color: '#6366f1', fontWeight: 400 }}>.fyi</span>
+            Runway
           </div>
         </div>
       </>
