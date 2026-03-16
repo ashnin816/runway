@@ -212,12 +212,9 @@ export default function AuthOverlay() {
       <style>{keyframes}</style>
       <div style={styles.overlay}>
         <div style={styles.card}>
-          <div style={styles.logoWrap}>
-            <div style={styles.logoGlow} />
-            <h1 style={styles.logo}>
-              Runway
-            </h1>
-          </div>
+          <h1 style={styles.logo}>
+            Runway
+          </h1>
           <div style={styles.subtitle}>Financial Modeling for Startups</div>
           <div style={styles.tagline}>Know your runway before it runs out.</div>
 
