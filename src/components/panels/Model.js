@@ -6,6 +6,7 @@ import { sumEmpAnnual, sumContractorAnnual, sumNewHireAnnual, getCutTotal } from
 import { getMonthOptions } from '@/lib/monthKeys';
 import { useUI } from '@/context/UIContext';
 import { useConfirm } from '@/components/shared/useConfirm';
+import { useGating } from '@/hooks/useGating';
 
 function SalaryInput({ value, onChange, placeholder = 'e.g. 120,000.00', style }) {
   const inputRef = useRef(null);
@@ -64,6 +65,7 @@ export default function Model() {
   const { state, dispatch } = useModel();
   const { modelTab: activeTab, setModelTab: setActiveTab } = useUI();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { canAddEmployee, requireUpgrade } = useGating();
 
   const { empRows, contractorRows, revenueClientRows, newHireRows } = state;
   const monthOptions = useMemo(() => getMonthOptions(), []);
@@ -124,12 +126,14 @@ export default function Model() {
 
   // --- Actions ---
   const addEmployee = useCallback(() => {
+    if (!canAddEmployee) { requireUpgrade('employees'); return; }
     dispatch({ type: 'ADD_EMPLOYEE', payload: { label: '', base: 0, bPct: 22, isCut: false, effectiveMonth: '' } });
-  }, [dispatch]);
+  }, [dispatch, canAddEmployee, requireUpgrade]);
 
   const addContractor = useCallback(() => {
+    if (!canAddEmployee) { requireUpgrade('employees'); return; }
     dispatch({ type: 'ADD_CONTRACTOR', payload: { label: '', amount: 0, isCut: false, effectiveMonth: '' } });
-  }, [dispatch]);
+  }, [dispatch, canAddEmployee, requireUpgrade]);
 
   const addNewHire = useCallback(() => {
     dispatch({ type: 'ADD_NEW_HIRE', payload: { label: '', base: 0, bPct: 22, effectiveMonth: '' } });
@@ -383,8 +387,12 @@ export default function Model() {
 
             {/* Add buttons */}
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button className="btn-add" onClick={addEmployee}>+ Employee</button>
-              <button className="btn-add" onClick={addContractor}>+ Contractor</button>
+              <button className="btn-add" onClick={addEmployee} style={!canAddEmployee ? { opacity: 0.5 } : undefined}>
+                + Employee{!canAddEmployee && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: 'rgba(59,130,246,.15)', color: '#3b82f6', padding: '1px 5px', borderRadius: 4, letterSpacing: '.04em' }}>PRO</span>}
+              </button>
+              <button className="btn-add" onClick={addContractor} style={!canAddEmployee ? { opacity: 0.5 } : undefined}>
+                + Contractor{!canAddEmployee && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: 'rgba(59,130,246,.15)', color: '#3b82f6', padding: '1px 5px', borderRadius: 4, letterSpacing: '.04em' }}>PRO</span>}
+              </button>
               <button className="btn-add" onClick={addNewHire} style={{ borderColor: 'rgba(34,197,94,.2)', color: 'var(--green)', background: 'rgba(34,197,94,.04)' }}>+ Planned hire</button>
             </div>
 

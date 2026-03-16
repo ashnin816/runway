@@ -8,13 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.6.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "chart.js": "^4.4.7",
+    "jspdf": "^2.5.2",
     "next": "^15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@supabase/supabase-js": "^2.49.0",
-    "@supabase/ssr": "^0.6.0",
-    "chart.js": "^4.4.7",
-    "xlsx-js-style": "^1.2.0",
-    "jspdf": "^2.5.2"
+    "stripe": "^20.4.1",
+    "xlsx-js-style": "^1.2.0"
   }
 }

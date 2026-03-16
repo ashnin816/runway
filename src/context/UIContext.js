@@ -9,6 +9,7 @@ export function UIProvider({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [modelTab, setModelTab] = useState('team');
+  const [upgradeModalFeature, setUpgradeModalFeature] = useState(null);
 
   useEffect(() => {
     try {
@@ -41,6 +42,7 @@ export function UIProvider({ children }) {
     sidebarCollapsed, toggleSidebar,
     chatOpen, setChatOpen,
     modelTab, setModelTab,
+    upgradeModalFeature, setUpgradeModalFeature,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

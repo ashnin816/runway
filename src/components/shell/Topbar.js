@@ -3,6 +3,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useUI } from '@/context/UIContext';
 import { useModel } from '@/context/ModelContext';
 import { exportExcel } from '@/lib/exportExcel';
+import { useGating } from '@/hooks/useGating';
+import { startCheckout } from '@/lib/stripe';
 
 const iconBtnStyle = {
   background: 'none',
@@ -87,10 +89,41 @@ export default function Topbar() {
   const { user, signOut } = useAuth();
   const { darkMode, toggleDarkMode, activePanel, setActivePanel } = useUI();
   const { state, saveStatus } = useModel();
+  const { isTrial, trialDaysLeft, trialExpired, canExport, requireUpgrade } = useGating();
 
   return (
     <div className="topbar">
       <div className="topbar-title">Runway <em>&middot; {panelNames[activePanel] || 'Model'}</em></div>
+
+      {/* Trial banner */}
+      {isTrial && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '4px 12px', borderRadius: 6,
+          fontSize: 12, fontWeight: 600,
+          fontFamily: "'Outfit', sans-serif",
+          background: trialDaysLeft <= 3 ? 'rgba(239,68,68,.1)' : 'rgba(245,158,11,.1)',
+          color: trialDaysLeft <= 3 ? '#ef4444' : '#d97706',
+          border: `1px solid ${trialDaysLeft <= 3 ? 'rgba(239,68,68,.2)' : 'rgba(245,158,11,.2)'}`,
+        }}>
+          <span>Trial: {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} left</span>
+          <button
+            onClick={() => startCheckout(user?.id, user?.email)}
+            style={{
+              padding: '2px 10px', borderRadius: 4, border: 'none',
+              background: trialDaysLeft <= 3 ? '#ef4444' : '#d97706',
+              color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: "'Outfit', sans-serif",
+            }}
+          >
+            Upgrade
+          </button>
+        </div>
+      )}
+      {trialExpired && (
+        <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: "'Outfit', sans-serif" }}>Free plan</span>
+      )}
+
       <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         {/* Dark mode toggle */}
         <IconBtn
@@ -103,7 +136,7 @@ export default function Topbar() {
         {/* Excel export */}
         <IconBtn
           title="Export to Excel"
-          onClick={() => exportExcel(state)}
+          onClick={() => canExport ? exportExcel(state) : requireUpgrade('export')}
         >
           <DownloadIcon />
         </IconBtn>

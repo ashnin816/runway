@@ -11,6 +11,8 @@ export function AuthProvider({ children }) {
   const [currentModelId, setCurrentModelId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [trialStartDate, setTrialStartDate] = useState(null);
+  const [trialEndDate, setTrialEndDate] = useState(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -33,14 +35,23 @@ export function AuthProvider({ children }) {
     async function checkSubscription(authUser) {
       try {
         const { data, error } = await supabase.from('subscriptions')
-          .select('status')
+          .select('status, trial_start, trial_end')
           .eq('user_id', authUser.id)
-          .in('status', ['active', 'trialing'])
+          .order('created_at', { ascending: false })
           .limit(1)
           .single();
-        setIsPro(!error && !!data);
+        if (!error && data) {
+          setSubscriptionStatus(data.status);
+          setIsPro(data.status === 'active');
+          if (data.trial_start) setTrialStartDate(new Date(data.trial_start));
+          if (data.trial_end) setTrialEndDate(new Date(data.trial_end));
+        } else {
+          setIsPro(false);
+          setSubscriptionStatus(null);
+        }
       } catch {
         setIsPro(false);
+        setSubscriptionStatus(null);
       }
     }
 
@@ -57,6 +68,9 @@ export function AuthProvider({ children }) {
           setIsPro(false);
           setMemberRole(null);
           setCurrentModelId(null);
+          setTrialStartDate(null);
+          setTrialEndDate(null);
+          setSubscriptionStatus(null);
         }
       }
     );
@@ -96,6 +110,9 @@ export function AuthProvider({ children }) {
     loading,
     trialStartDate,
     setTrialStartDate,
+    trialEndDate,
+    setTrialEndDate,
+    subscriptionStatus,
     signOut,
     sendMagicLink,
     setIsPro,
