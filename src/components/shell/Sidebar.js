@@ -43,7 +43,7 @@ export default function Sidebar() {
   return (
     <div className={`sidebar${sidebarCollapsed ? ' collapsed' : ''}`} style={{ position: 'relative' }}>
       <div className="sb-logo">
-        <h1>Runway<span>.fyi</span></h1>
+        <h1>Runway</h1>
         <p>Financial Modeling &middot; Startups</p>
       </div>
 
