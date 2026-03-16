@@ -252,7 +252,7 @@ button,a,input,select,textarea{transition:all .2s ease;}
 .page{max-width:1020px;margin:0 auto;transition:max-width .15s;}
 .page.wide{max-width:none;}
 .header-eyebrow{display:none;}
-h1{display:none;}
+.page > h1{display:none;}
 .header-sub{display:none;}
 .header-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .runway-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);color:var(--red);padding:6px 14px;border-radius:100px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;}
