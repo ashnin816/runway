@@ -9,8 +9,7 @@ const styles = {
     justifyContent: 'center',
     height: '100vh',
     width: '100vw',
-    background: 'linear-gradient(145deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%)',
-    backgroundImage: 'linear-gradient(145deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%), radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.04) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(59,130,246,0.03) 0%, transparent 50%)',
+    background: '#f8fafc',
     position: 'fixed',
     inset: 0,
     zIndex: 9999,
@@ -23,6 +22,10 @@ const styles = {
     maxWidth: 400,
     width: '100%',
     padding: '48px 32px',
+    background: '#ffffff',
+    borderRadius: 16,
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 4px 24px rgba(0,0,0,.06)',
   },
   logoWrap: {
     position: 'relative',
@@ -31,7 +34,7 @@ const styles = {
   logoGlow: {
     position: 'absolute',
     inset: '-40px',
-    background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.15) 0%, rgba(59,130,246,0.08) 40%, transparent 70%)',
+    background: 'radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%)',
     borderRadius: '50%',
     pointerEvents: 'none',
     filter: 'blur(8px)',
@@ -40,7 +43,7 @@ const styles = {
     fontFamily: "'Fraunces', serif",
     fontSize: 40,
     fontWeight: 700,
-    color: '#f1f5f9',
+    color: '#1e293b',
     position: 'relative',
     zIndex: 1,
     margin: 0,
@@ -58,7 +61,7 @@ const styles = {
   },
   tagline: {
     fontSize: 13,
-    color: '#475569',
+    color: '#94a3b8',
     fontStyle: 'italic',
     marginBottom: 32,
   },
@@ -71,10 +74,10 @@ const styles = {
     padding: '14px 16px',
     fontSize: 14,
     fontFamily: "'JetBrains Mono', monospace",
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: '#f1f5f9',
+    border: '1px solid #e2e8f0',
     borderRadius: 10,
-    color: '#e2e8f0',
+    color: '#1e293b',
     outline: 'none',
     transition: 'border-color 0.2s, box-shadow 0.2s',
     boxSizing: 'border-box',
@@ -85,7 +88,7 @@ const styles = {
     fontSize: 14,
     fontWeight: 600,
     fontFamily: "'Inter', sans-serif",
-    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+    background: '#3b82f6',
     color: '#fff',
     border: 'none',
     borderRadius: 10,
@@ -93,22 +96,22 @@ const styles = {
     marginTop: 12,
     transition: 'opacity 0.2s, transform 0.15s, box-shadow 0.2s',
     letterSpacing: '0.01em',
-    boxShadow: '0 2px 8px rgba(99,102,241,.2)',
+    boxShadow: '0 2px 8px rgba(59,130,246,.2)',
   },
   helperText: {
     fontSize: 12,
-    color: '#475569',
+    color: '#94a3b8',
     marginTop: 10,
   },
   errorMsg: {
     fontSize: 12,
-    color: '#f87171',
+    color: '#ef4444',
     marginTop: 10,
     fontWeight: 500,
   },
   footer: {
     fontSize: 11,
-    color: '#334155',
+    color: '#94a3b8',
     marginTop: 40,
     letterSpacing: '0.04em',
   },
@@ -121,8 +124,8 @@ const styles = {
     width: 56,
     height: 56,
     borderRadius: '50%',
-    background: 'rgba(34,197,94,0.1)',
-    border: '2px solid rgba(34,197,94,0.3)',
+    background: 'rgba(34,197,94,0.08)',
+    border: '2px solid rgba(34,197,94,0.2)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -135,7 +138,7 @@ const styles = {
     color: '#22c55e',
   },
   sentTitle: {
-    color: '#e2e8f0',
+    color: '#1e293b',
     fontSize: 16,
     fontWeight: 600,
     marginBottom: 6,
@@ -146,11 +149,11 @@ const styles = {
     lineHeight: 1.7,
   },
   sentEmail: {
-    color: '#93c5fd',
+    color: '#3b82f6',
     fontWeight: 600,
   },
   resetLink: {
-    color: '#475569',
+    color: '#64748b',
     fontSize: 12,
     cursor: 'pointer',
     textDecoration: 'underline',
@@ -228,11 +231,11 @@ export default function AuthOverlay() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 style={styles.input}
                 onFocus={(e) => {
-                  e.target.style.borderColor = 'rgba(99,102,241,0.4)';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.08)';
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255,255,255,0.08)';
+                  e.target.style.borderColor = '#e2e8f0';
                   e.target.style.boxShadow = 'none';
                 }}
               />
@@ -247,12 +250,12 @@ export default function AuthOverlay() {
                 onMouseEnter={(e) => {
                   if (!sending) {
                     e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 4px 16px rgba(99,102,241,.35)';
+                    e.target.style.boxShadow = '0 4px 16px rgba(59,130,246,.3)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 2px 8px rgba(99,102,241,.2)';
+                  e.target.style.boxShadow = '0 2px 8px rgba(59,130,246,.2)';
                 }}
               >
                 {sending ? 'Sending...' : 'Send Magic Link'}
@@ -296,8 +299,8 @@ export default function AuthOverlay() {
                   setSending(false);
                   setEmail('');
                 }}
-                onMouseEnter={(e) => (e.target.style.color = '#94a3b8')}
-                onMouseLeave={(e) => (e.target.style.color = '#475569')}
+                onMouseEnter={(e) => (e.target.style.color = '#1e293b')}
+                onMouseLeave={(e) => (e.target.style.color = '#64748b')}
               >
                 Use a different email
               </button>

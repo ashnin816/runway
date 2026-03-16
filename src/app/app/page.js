@@ -65,13 +65,13 @@ export default function AppPage() {
           justifyContent: 'center',
           flexDirection: 'column',
           height: '100vh',
-          background: 'linear-gradient(145deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%)',
+          background: '#f8fafc',
         }}>
           <div style={{
             fontFamily: "'Fraunces', serif",
             fontSize: 36,
             fontWeight: 700,
-            color: '#f1f5f9',
+            color: '#1e293b',
             animation: 'loadingPulse 2s ease-in-out infinite',
           }}>
             Runway
